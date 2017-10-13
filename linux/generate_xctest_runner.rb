@@ -123,6 +123,8 @@ BEGIN {
             file.write header(extension_file)
             file.write "\n"
 
+            file.write "#if os(Linux) || os(FreeBSD)\n\n"
+
             for classArray in classes
                 file.write "extension " + classArray[0] + " {\n\n"
                 file.write "   static var allTests: [(String, (" + classArray[0] + ") -> () throws -> Void)] {\n"
@@ -143,6 +145,8 @@ BEGIN {
                 file.write "   }\n"
                 file.write "}\n"
             end
+
+            file.write "\n#endif\n"
         }
     end
 
@@ -230,7 +234,7 @@ BEGIN {
                 match = line[/class[ \t]+[a-zA-Z0-9_]*(?=[ \t]*:[ \t]*XCTestCase)|func[ \t]+test[a-zA-Z0-9_]*(?=[ \t]*\(\))/, 0]
                 if match
 
-                    if match[/class/, 0] == "class"
+                    if match[/^class/, 0] == "class"
                         class_name = match.sub(/^class[ \t]+/, '')
                         #
                         # Create a new class / func structure
