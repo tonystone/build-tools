@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 #
-#   generate_xctest_linux_runner.rb
+#   generate_xctest_runner.rb
 #
 #   Copyright 2017 Tony Stone
 #
