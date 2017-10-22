@@ -29,11 +29,12 @@ include FileUtils
 def usage()
   string = <<USAGE
 Usage:
-   %{file_name} [--package-path path]
+   %{file_name} [--package-path path] [--header-template path] [--extension-files true|false]
 
 Options:
-  --package-path  Path to directory containing Package.swift
-  --header-template Path to the file to use as the header template for each generated file (defaults to .build-tools.header in the package-path directory)
+  --package-path      Path to directory containing Package.swift
+  --header-template   Path to the file to use as the header template for each generated file (defaults to .build-tools.header in the package-path directory)
+  --extension-files   Should test class extensions files be generated (FileName+XCTest.swift) or should the extensions be embed in LinuxMain.swift (defaults to false)
 
 USAGE
 
@@ -46,9 +47,11 @@ end
 #
 package_path="./"
 header_template=nil
+extension_files=false
 
 options = GetoptLong.new(
     [ '--package-path', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--extension-files', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--help', GetoptLong::NO_ARGUMENT ]
 )
 options.quiet = true
@@ -56,6 +59,7 @@ options.quiet = true
 begin
     options.each do |option, value|
         if    option == '--package-path' then package_path=value.dup
+        elsif option == '--extension-files' then extension_files=(value.to_s == "true")
         elsif option == '--help' then usage(); abort
         end
     end
@@ -84,7 +88,7 @@ package = JSON.parse(`swift package --package-path #{package_path} dump-package`
 # Extract the test targets
 test_targets = package["targets"].select { |t| t["isTest"] }
 
-classes = Array.new
+file_classes = Array.new
 module_names = Array.new
 
 #
@@ -97,16 +101,16 @@ test_targets.each do |target|
     target_sub_directory = File.join(package_path, target_path)
 
     module_names << module_name
-    classes = classes + processTestFiles(header_template, target_sub_directory)
+    file_classes = file_classes + processTestFiles(header_template, target_sub_directory, extension_files)
 end
 
 #
 # If its the root level and there are classes, create the LinuxMain file
 #
-if classes.count > 0
+if file_classes.count > 0
   target_path = File.join(package_path, default_tests_directory)
 
-  createLinuxMain(header_template, target_path, module_names, classes)
+  createLinuxMain(header_template, target_path, module_names, file_classes, extension_files)
 end
 
 BEGIN {
@@ -126,21 +130,22 @@ BEGIN {
     #
     # Process the test files in the given target_sub_directory.
     #
-    def processTestFiles(header_template, target_sub_directory)
+    def processTestFiles(header_template, target_sub_directory, extension_files)
 
-        classes = Array.new
+        file_classes = Array.new
 
-        Dir[target_sub_directory + '/*Test{s,}.swift'].each do |file_name|
+        Dir[target_sub_directory + '/*Test{s,}.swift'].each do |target_path|
 
-            if File.file? file_name
+            if File.file? target_path
 
-                file_classes = parseSourceFile(file_name)
+                classes = parseSourceFile(target_path)
 
                 # If there are classes in the test source file, create an extension file for it.
-                if file_classes.count > 0
-                    createExtensionFile(header_template,file_name, file_classes)
-
-                    classes << file_classes
+                if classes.count > 0
+                    if extension_files
+                        createExtensionFile(header_template, target_path, classes)
+                    end
+                    file_classes << classes
                 end
             end
         end
@@ -149,97 +154,14 @@ BEGIN {
         Dir[target_sub_directory + '/*'].each do |sub_directory|
 
             if File.directory?(sub_directory)
-                sub_classes = processTestFiles(header_template, sub_directory)
+                sub_classes = processTestFiles(header_template, sub_directory, extension_files)
 
                 # Aggregate the files and classes
-                classes = classes + sub_classes
+                file_classes = file_classes + sub_classes
             end
         end
 
-        return classes
-    end
-
-    #
-    # Creates an extension file for the given target_path
-    #
-    def createExtensionFile(header_template, target_path, classes)
-
-        extension_file = target_path.sub! ".swift", "+XCTest.swift"
-        print "Creating file: " + extension_file + "\n"
-
-        # Get the header first since we may open the file to read in the existing header.
-        header_text = header(header_template, extension_file)
-
-        File.open(extension_file, 'w') { |file|
-
-            file.write header_text
-            file.write "\nimport XCTest\n\n"
-
-            file.write "#if os(Linux) || os(FreeBSD)\n\n"
-
-            for classArray in classes
-                file.write "extension " + classArray[0] + " {\n\n"
-                file.write "   static var allTests: [(String, (" + classArray[0] + ") -> () throws -> Void)] {\n"
-                file.write "      return [\n"
-
-                first = true
-
-                for funcName in classArray[1]
-                    if !first
-                        file.write ",\n"
-                    end
-                    file.write "                (\"" + funcName + "\", " + funcName + ")"
-
-                    first = false
-                end
-
-                file.write "\n           ]\n"
-                file.write "   }\n"
-                file.write "}\n"
-            end
-
-            file.write "\n#endif\n"
-        }
-    end
-
-    #
-    # Creates the LinuxMain.swift file.
-    #
-    def createLinuxMain(header_template, target_path, module_names, file_classes)
-
-        file_name = target_path + "/LinuxMain.swift"
-        print "Creating file: " + file_name + "\n"
-
-        # Get the header first since we may open the file to read in the existing header.
-        header_text = header(header_template,file_name)
-
-        File.open(file_name, 'w') { |file|
-
-            file.write header_text
-            file.write "\nimport XCTest\n\n"
-
-            file.write "#if os(Linux) || os(FreeBSD)\n"
-
-            module_names.each do |module_name|
-              file.write "   @testable import " + module_name + "\n"
-            end
-            file.write "\n"
-            file.write "   XCTMain([\n"
-
-            first = true
-
-            for classes in file_classes
-                for classArray in classes
-                    if !first
-                        file.write ",\n"
-                    end
-                    file.write "         testCase(" + classArray[0] + ".allTests)"
-                    first = false
-                end
-            end
-            file.write"\n    ])\n"
-            file.write "#endif\n"
-        }
+        return file_classes
     end
 
     #
@@ -311,6 +233,56 @@ BEGIN {
     end
 
     #
+    # Creates the LinuxMain.swift file.
+    #
+    def createLinuxMain(header_template, target_path, module_names, file_classes, extension_files)
+
+        file_name = target_path + "/LinuxMain.swift"
+        print "Creating file: " + file_name + "\n"
+
+        # Get the header first since we may open the file to read in the existing header.
+        header_text = header(header_template,file_name)
+
+        File.open(file_name, 'w') { |file|
+
+            file.write header_text
+            file.write "\n#if os(Linux) || os(FreeBSD)\n"
+            file.write imports(module_names)
+            file.write linuxMain(file_classes)
+
+            unless extension_files
+                for classes in file_classes
+                    file.write extension(classes)
+                end
+            end
+            file.write "\n#endif\n"
+        }
+    end
+
+    # Creates an extension file for the given target_path
+    #
+    def createExtensionFile(header_template, target_path, classes)
+
+        extension_file = target_path.sub! ".swift", "+XCTest.swift"
+        print "Creating file: " + extension_file + "\n"
+
+        # Get the header first since we may open the file to read in the existing header.
+        header_text = header(header_template, extension_file)
+
+        File.open(extension_file, 'w') { |file|
+
+            file.write header_text
+            file.write "\n#if os(Linux) || os(FreeBSD)\n"
+            file.write "\nimport XCTest\n"
+
+            file.write extension(classes)
+
+            file.write "\n#endif\n"
+        }
+    end
+
+
+    #
     # Returns the header to use for a file.
     #
     def header(header_template, target_path)
@@ -344,5 +316,57 @@ BEGIN {
         end
 
         return header
+    end
+
+    def imports(module_names)
+        imports = "\nimport XCTest\n\n"
+
+        module_names.each do |module_name|
+            imports += "@testable import " + module_name + "\n"
+        end
+        imports += "\n"
+    end
+
+    def linuxMain(file_classes)
+
+        linux_main = "XCTMain([\n"
+
+        first = true
+
+        for classes in file_classes
+            for classArray in classes
+                if !first
+                    linux_main += ",\n"
+                end
+                linux_main += "   testCase(" + classArray[0] + ".allTests)"
+                first = false
+            end
+        end
+        linux_main += "\n])\n"
+    end
+
+    def extension(classes)
+        extension = ""
+        for class_array in classes
+            extension += "\nextension " + class_array[0] + " {\n"
+            extension += "   static var allTests: [(String, (" + class_array[0] + ") -> () throws -> Void)] {\n"
+            extension += "      return [\n"
+
+            first = true
+
+            for func_name in class_array[1]
+                if !first
+                    extension += ",\n"
+                end
+                extension += "                (\"" + func_name + "\", " + func_name + ")"
+
+                first = false
+            end
+
+            extension += "\n           ]\n"
+            extension += "   }\n"
+            extension += "}\n"
+        end
+        extension
     end
 }
