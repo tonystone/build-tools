@@ -42,19 +42,19 @@ add_custom_target(gyb-tool ALL
 #
 # Installation section
 #
-INSTALL(
-        DIRECTORY ${GYB_WORKING_DIRECTORY}/
+install(
+        PROGRAMS ${GYB_WORKING_DIRECTORY}/gyb ${GYB_WORKING_DIRECTORY}/gyb.py
         DESTINATION build-tools/bin
 )
-INSTALL(
-        DIRECTORY source/
+install(
+        PROGRAMS source/generate_xctest_runner.rb source/process_gyb.rb
         DESTINATION build-tools/bin
 )
-INSTALL(
+install(
         FILES README.md LICENSE
         DESTINATION build-tools
 )
-INSTALL(
+install(
         DIRECTORY documentation/
         DESTINATION build-tools/documentation
 )
