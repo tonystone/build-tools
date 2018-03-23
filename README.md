@@ -16,6 +16,7 @@ Tools for build &amp; test on various platforms.
 For specific documentation on each script see the links below:
 - [**gyb_tool.rb**](documentation/gyb_tool.md) - A script to locate your GYB (`.gyb`) files and process them producing the `.swift` file.
 - [**xctest_tool.rb**](documentation/xctest_tool.md) - A script to parse your package and source producing the required swift files to run tests on linux.
+- [**xcworkspace_tool.rb**](documentation/xcworkspace_tool.md) - A script to create an Xcode Workspaces that contains projects, playgrounds, groups and files programmatically.
 
 ## Source
 
