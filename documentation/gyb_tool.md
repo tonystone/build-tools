@@ -1,5 +1,5 @@
 # Build Tools
-## process_gyb.rb
+## gyb_tool.rb
 Using Swift's gyb (generate your boilerplate) can help remove redundancy and reduce copy-paste errors as well as generally reducing the amount of code you have to write.  Running the gyb command on every `.gyb` file you create can be tedious, or if you create your own shell command to run it from one command, you have to maintain that shell every time you add/rename/move/delete a gyb file in your project.  
 
 This script will walk your entire project structure processing `.gyb` files found and outputting the `.swift` file for each.
@@ -7,7 +7,7 @@ This script will walk your entire project structure processing `.gyb` files foun
 ##### Usage
 
 ```
-process_gyb.rb [--recursive] [--gyb-path Path] [--input-path path] [--output-path path]
+gyb_tool.rb [--recursive] [--gyb-path Path] [--input-path path] [--output-path path]
 ```
 
 Options:

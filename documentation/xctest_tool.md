@@ -1,11 +1,11 @@
 # Build Tools
-## generate_xctest_runner.rb
+## xctest_tool.rb
 To run `swift test` on Linux, SPM requires that a runner is created that loads and executes the tests on this platform.  This script will generate the necessary files based on your `Package.swift` and test source.
 
 ##### Usage
 
 ```
-generate_xctest_runner.rb [--package-path path] [--header-template path] [--extension-files true|false]
+xctest_tool.rb [--package-path path] [--header-template path] [--extension-files true|false]
 ```
 
 If you omit the `--package-path` parameter, this script will use the current directory `./` to attempt to locate the `Package.swift` file.  To override this and run the script from any location, pass `--package-path` with the full directory containing the package manifest.
@@ -31,7 +31,7 @@ MyProject
 |         |--- FileTests.swift
 </pre>
 
-Running `generate_xctest_runner.rb --extension-files=false` will produce the following extra files.
+Running `xctest_tool.rb --extension-files=false` will produce the following extra files.
 <pre>
 MyProject 
 |--- Package.swift
@@ -45,7 +45,7 @@ MyProject
 |         |--- FileTests.swift
 </pre>
 
-Running `generate_xctest_runner.rb --extension-files=true` will produce the following extra files.
+Running `xctest_tool.rb --extension-files=true` will produce the following extra files.
 <pre>
 MyProject 
 |--- Package.swift

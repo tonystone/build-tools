@@ -14,8 +14,8 @@ Tools for build &amp; test on various platforms.
 ## Documentation
 
 For specific documentation on each script see the links below:
-- [**process_gyb.rb**](documentation/process_gyb.md) - A script to locate your GYB (`.gyb`) files and process them producing the `.swift` file.
-- [**generate_xctest_runner.rb**](documentation/generate_xctest_runner.md) - A script to parse your package and source producing the required swift files to run tests on linux.
+- [**gyb_tool.rb**](documentation/gyb_tool.md) - A script to locate your GYB (`.gyb`) files and process them producing the `.swift` file.
+- [**xctest_tool.rb**](documentation/xctest_tool.md) - A script to parse your package and source producing the required swift files to run tests on linux.
 
 ## Source
 

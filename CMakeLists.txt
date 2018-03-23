@@ -37,7 +37,7 @@ install(
         DESTINATION build-tools/bin
 )
 install(
-        PROGRAMS source/generate_xctest_runner.rb source/process_gyb.rb
+        PROGRAMS source/xctest_tool.rb source/gyb_tool.rb
         DESTINATION build-tools/bin
 )
 install(
