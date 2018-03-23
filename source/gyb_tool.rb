@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 #
-#   process_gyb.rb
+#   gyb_tool.rb
 #
 #   Copyright 2017 Tony Stone
 #
