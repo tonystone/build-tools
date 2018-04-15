@@ -164,6 +164,7 @@ BEGIN {
         return file_classes
     end
 
+
     #
     # Process the source file returning a list of classes in the source
     #
@@ -179,57 +180,80 @@ BEGIN {
 
         current_class = nil
 
-        in_if_linux = false
-        in_else    = false
-        ignore    = false
+        inside_comment = Array.new
+        inside_comment << false
+
+        linux_visibility = Array.new
+        linux_visibility << true    ## Push initial value
 
         #
         # Read the file line by line and parse to find the class names and func names
         #
         File.readlines(file_name).each do |line|
 
-            if in_if_linux
-                if /\#else/.match(line)
-                    in_else = true
-                    ignore = true
-                else
-                    if /\#end/.match(line)
-                        in_else = false
-                        in_if_linux = false
-                        ignore = false
-                    end
+            if line[/^\/\//]            # Commented out line
+                # just eat it, this is a no-op
+
+            elsif line[/\/\*/]         # Start of comment
+                unless line[/\/\*.*\*\//]
+                    inside_comment << true
                 end
-            else
-                if /\#if[ \t]+os\(Linux\)/.match(line)
-                    in_if_linux = true
-                    ignore = false
+
+            elsif line[/\*\//]         # end of comment
+                inside_comment.pop
+
+            elsif line[/\#if[ \t]/]    # compiler control statement
+                linux_visibility << isLinuxVisible(line)
+
+            elsif line[/\#else/]       # compiler control statement
+                linux_visibility.pop
+                linux_visibility << linux_visibility.last
+
+            elsif line[/\#endif/]      # compiler control statement
+                linux_visibility.pop
+
+            elsif match = line.match(/class[ \t]+([a-zA-Z0-9_]*)(?=[ \t]*:[ \t]*XCTestCase)/)  # Class declaration
+
+                if linux_visibility.last == true && !inside_comment.last == true
+
+                    class_name = match.captures[0]
+
+                    # Create a new class / func structure and add it to the classes array.
+                    current_class = [class_name, Array.new]
+
+                    classes << current_class
                 end
-            end
 
-            if !ignore
+            elsif match = line.match(/func[ \t]+(test[a-zA-Z0-9_]*)(?=[ \t]*\(\))/)        # function declaration
 
-                # Match class or func
-                match = line[/class[ \t]+[a-zA-Z0-9_]*(?=[ \t]*:[ \t]*XCTestCase)|func[ \t]+test[a-zA-Z0-9_]*(?=[ \t]*\(\))/, 0]
-                if match
+                if linux_visibility.last == true && !inside_comment.last == true
 
-                    if match[/^class/, 0] == "class"
-                        class_name = match.sub(/^class[ \t]+/, '')
+                    func_name  = match.captures[0]
 
-                        # Create a new class / func structure and add it to the classes array.
-                        current_class = [class_name, Array.new]
-
-                        classes << current_class
-
-                    else # Must be a func
-                        func_name  = match.sub(/^func[ \t]+/, '')
-
-                        # Add each func name the class / func structure created above.
-                        current_class[1] << func_name
-                    end
+                    # Add each func name the class / func structure created above.
+                    current_class[1] << func_name
                 end
             end
         end
+
         return classes
+    end
+
+    # Note: As a safety measure, if swift | arch | canImport are found, they evaluate to true so it's best not to mix os with other statements
+    def isLinuxVisible(compiler_control_statement)
+        statement = compiler_control_statement.gsub(/\#if[ \t]/, "")
+        statement = statement.gsub(/os\(Linux\)/, "true")
+        statement = statement.gsub(/os\(([^)]+)\)/, "false")
+
+        # if they are tergeting the simulator, this should return false
+        statement = statement.gsub(/(\!)?targetEnvironment\(([^)]+)\)/, "false")
+
+        # Everthing else elvaluates to true for our purposes.
+        statement = statement.gsub(/(\!)?(swift|arch|canImport)\(([^)]+)\)|[A-Z_-]+/, "true")
+
+
+
+        eval statement  # return the evaluated expression
     end
 
     #
