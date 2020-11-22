@@ -13,14 +13,14 @@ set(WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 add_custom_command(
         OUTPUT gyb.py
         COMMAND wget
-        ARGS --quiet https://github.com/apple/swift/raw/master/utils/gyb.py
+        ARGS --quiet https://raw.githubusercontent.com/apple/swift/main/utils/gyb.py
         WORKING_DIRECTORY ${WORKING_DIRECTORY}
 )
 
 add_custom_command(
         OUTPUT gyb
         COMMAND wget
-        ARGS --quiet https://github.com/apple/swift/raw/master/utils/gyb
+        ARGS --quiet https://raw.githubusercontent.com/apple/swift/main/utils/gyb
         WORKING_DIRECTORY ${WORKING_DIRECTORY}
         DEPENDS gyb.py
 )
