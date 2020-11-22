@@ -372,7 +372,7 @@ BEGIN {
     def extension(classes)
         extension = ""
         for class_array in classes
-            extension += "\nextension " + class_array[0] + " {\n"
+            extension += "\nextension " + class_array[0] + " {\n\n"
             extension += "   static var allTests: [(String, (" + class_array[0] + ") -> () throws -> Void)] {\n"
             extension += "      return [\n"
 
